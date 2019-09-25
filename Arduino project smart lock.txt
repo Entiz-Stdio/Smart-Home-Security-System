@@ -1,0 +1,258 @@
+#include <Keypad.h> //http://www.arduino.cc/playground/uploads/Code/Keypad.zip
+#include<Servo.h> //http://www.arduino.cc/playground/uploads/Code/Servo.zip
+
+const int gr=13,rd=12,bz=A0,blue= 11;                //COMPONENTS connected to arduino
+char p1='1' ,p2='2' ,p3='3' ,p4='4';        //variables to store password (I used array here but it doesn t work idk why)
+char g1=1 ,g2=2 ,g3=3 ,g4=4;                //variables to store the guessed password
+int j =0, cng=0,maxpass=0;
+int p=0;
+int i = 0 ;
+
+char which_fx='B';//default visual effect
+
+int visualfx_buzz(char Combo)         //To blink leds and for buzzer and for changing visual fx   
+{ if(Combo=='Z')                    //To buzz
+   {digitalWrite(bz,HIGH);
+    delay(70);
+    digitalWrite(bz,LOW);
+   }
+  else if(Combo=='Q')              //To turn off the visual fx before the indicating led turns on(i.e.,turn off all visual effects before turning on the green or red led
+  { digitalWrite(13,LOW);
+    digitalWrite(12,LOW);
+    digitalWrite(11,LOW);
+  } 
+  else
+  switch(Combo)                    //Different typesof led colours using the 3 coluor combination RGB(4 effe
+  { case 'A': digitalWrite(13,LOW);
+              digitalWrite(12,LOW);
+              digitalWrite(11,LOW);                             //No visual effects ,could be used to save power
+              break;
+    case 'B': digitalWrite(gr,LOW);
+              digitalWrite(rd,LOW); 
+              digitalWrite(blue,HIGH);      //Turning only blue
+              break;                                                   //These are used to look more cool
+    case 'C': 
+              digitalWrite(gr,LOW);
+               
+              digitalWrite(rd,HIGH);      //Turning red and blue on
+              digitalWrite(blue,HIGH);
+              break;
+    case 'D': digitalWrite(rd,LOW);
+ 
+              digitalWrite(blue,HIGH);
+              digitalWrite(gr,HIGH);
+              break;          
+    case 'E':
+              digitalWrite(rd,HIGH);      //Turning on all leds
+              digitalWrite(gr,HIGH);
+              digitalWrite(blue,HIGH);
+              break;               
+   }return 1;
+} 
+
+int dos=0;          //Status of servo
+int closed = 180;    //Closing angle for servo         
+int opened = 0;  //opening Angle for servo
+
+int vis_cha_swh_no = 0; //To count how many times pressing the 'C' button to change visual fx
+const byte ROWS = 4;   // Four rows in kepad
+const byte COLS = 4;   // Four columns in keypad
+// Define the Keymap
+char keys[ROWS][COLS] = {
+  {'1','2','3','D'},
+  {'4','5','6'},
+  {'7','8','9','C'},
+  {'*','0','#','A'}
+};
+
+byte rowPins[ROWS] = { 9,8,7,6 };// Connect keypad ROW0, ROW1, ROW2 and ROW3 to these Arduino pins.
+byte colPins[COLS] = { 5,4,3,2 };// Connect keypad COL0, COL1, and COL2  to these Arduino pins.
+int count=0;
+
+// Create the Keypad
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+Servo doorlock; //Create servo object to control a servo
+
+
+
+void keypadEvent(KeypadEvent eKey)
+{
+ if(p==1)                         //entering case to change password
+  { 
+   switch(keypad.getState())
+   {
+    case PRESSED: Serial.print("Pressed: ");
+                  Serial.println(eKey);
+                  visualfx_buzz('Z');
+                  switch (eKey)
+                  { case '*': 
+                    case '#': 
+                    case 'C':
+                    case 'A': 
+                    case 'B':
+                    case 'D':                            
+                    default: if(i<4)
+                             if(isdigit(eKey))  //Changing the password
+                             {  if(cng<4)
+                              {
+                                if(cng==0) p1=eKey;
+                                if(cng==1) p2=eKey;
+                                if(cng==2) p3=eKey;
+                                if(cng==3)
+                                { p4=eKey;
+                                  cng = -1;
+                                  p=0; Serial.println();
+                                }             
+                                cng++;       
+                              }
+                             }
+                  }
+  }
+  }
+
+else   //normal case for entering passwords
+  {
+  switch (keypad.getState()){
+    case PRESSED:
+  Serial.print("Pressed: ");
+  Serial.println(eKey);
+  visualfx_buzz('Z');
+  switch (eKey){
+    case '*': checkpass(0);
+              break;
+    case 'C': if(vis_cha_swh_no==0)              //Pressingeach time results in different fx
+              {   which_fx = 'C';
+                  visualfx_buzz(which_fx);
+                  vis_cha_swh_no++;
+              }
+              else if(vis_cha_swh_no==1)
+              {   which_fx = 'D';
+                  visualfx_buzz(which_fx);
+                  vis_cha_swh_no++;
+              }
+              else if(vis_cha_swh_no==2)
+              {   which_fx = 'E';
+                  visualfx_buzz(which_fx);
+                  vis_cha_swh_no++;
+              }
+              else if(vis_cha_swh_no==3)
+              {   which_fx = 'A';
+                  visualfx_buzz(which_fx);
+                  vis_cha_swh_no++;
+              }
+              else if(vis_cha_swh_no==4)
+              {   which_fx = 'B';
+                  visualfx_buzz(which_fx);
+                  vis_cha_swh_no=0;
+              }
+              break;
+    case '#':
+             if((checkpass(2))==0)  //checking password to go into programming mode
+               p=1;
+               break;
+    case 'A':if(dos==0)
+              for(dos=(opened+1);dos<180;dos++) //to open
+              { 
+               doorlock.write(dos);
+               delay(20);
+              }
+             else if(dos==180)
+                for(dos=(closed+1);dos>0;dos--) //to close
+              { 
+                 doorlock.write(dos);
+                 delay(20);
+              }   
+    case 'B':break;
+    case 'D':if(dos==0||dos==(-1))
+              {visualfx_buzz('Q');digitalWrite(rd,HIGH);
+               for(dos=(opened+1);dos<180;dos++) //to open
+              { 
+               doorlock.write(dos);
+               delay(20);
+              }
+              digitalWrite(rd,LOW);visualfx_buzz(which_fx);
+              }
+             break;                            
+    default: maxpass++; //to make sure the entered password is of 4 digits
+             if(i<4)
+              { if(i==0) //inputing entered values to the guessed password
+                  g1 = eKey;
+                if(i==1)
+                  g2 = eKey;
+                if(i==2)
+                  g3 = eKey;
+                if(i==3)
+                  g4 = eKey;
+                i++;
+              }
+     }
+  }
+}
+}
+
+
+   
+
+void setup()
+{
+  Serial.begin(9600);
+  doorlock.attach(10);
+  keypad.addEventListener(keypadEvent); //add an event listener for this keypad
+  pinMode(blue,OUTPUT);
+  pinMode(rd,OUTPUT);
+  pinMode(gr,OUTPUT); 
+  pinMode(bz,OUTPUT);
+  visualfx_buzz(which_fx);
+  
+}
+void loop(){
+  
+  keypad.getKey();
+  if(p==1)       //visually showing that the user have entered the case to change password
+   {visualfx_buzz('Q');digitalWrite(gr,HIGH);digitalWrite(rd,HIGH);}
+  else           //normal mode for  entering password
+    {digitalWrite(rd,LOW);digitalWrite(gr,LOW);visualfx_buzz(which_fx);}
+}
+
+
+bool checkpass(int opt)    //Function to check whether the guessed password is righ or wrong
+{
+  if(p1 == g1){count = 1; 
+   if(g2 == p2){count = 2;
+    if(p3 == g3){count=3;
+     if(p4 == g4)
+       count = 4;}}}
+  if(count==4&&maxpass==4)
+    {if(opt==2)   //Only checking whether the password is right or wrong to set the new password, we dont want the lock to be running at this instance
+      {i=0;count=0;maxpass=0;return 0;}
+     else if(opt==0)
+      { 
+       Serial.println("Success"); //If it is a correct password this wil work
+       i=0;maxpass=0; //don t messs with these
+       count = 0;
+       visualfx_buzz('Q');
+       digitalWrite(gr,HIGH);
+       if(dos==180)//At the starting the value will be 0
+              for(dos=(closed+1);dos>0;dos--) //to close
+              { 
+                 doorlock.write(dos);
+                 delay(20);
+              } 
+       digitalWrite(gr,LOW);
+       visualfx_buzz(which_fx);
+       
+       return 0;
+      } 
+    }
+   else
+    {
+      Serial.println("Wrong");   //add code here to do whatever u like when a wrong password is entered
+      i=0;maxpass=0;
+      visualfx_buzz('Q');
+      digitalWrite(rd,HIGH);
+      delay(1500);
+      digitalWrite(rd,LOW);
+      visualfx_buzz(which_fx);
+      return 1;
+    }
+}
